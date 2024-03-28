@@ -11,82 +11,102 @@ import {
 import { FontAwesome5 } from "@expo/vector-icons";
 import Header from "../components/Header";
 
-const createSurvey = (id, question) => ({
+const createSurvey = (id, question, upVotes, downVotes, comments) => ({
   id,
   question,
-  votes: { up: 0, down: 0 },
-  comments: [],
+  votes: { up: upVotes, down: downVotes },
+  comments,
 });
 
 const initialSurveys = [
-  createSurvey(1, "Le meilleur joueur de foot de tous les temps?"),
-  createSurvey(2, "Le club de foot le plus emblématique?"),
-  createSurvey(3, "La compétition de foot la plus excitante?"),
+  createSurvey(1, "Le meilleur joueur de foot de tous les temps?", 20, 5, [
+    { text: "Messi est le meilleur!", user: "Inconnu", replies: [] },
+    { text: "Non, c'est Cristiano Ronaldo!", user: "Inconnu", replies: [] },
+  ]),
+  createSurvey(2, "Le club de foot le plus emblématique?", 15, 10, [
+    { text: "Le Real Madrid, bien sûr!", user: "Inconnu", replies: [] },
+    { text: "Non, c'est le FC Barcelona!", user: "Inconnu", replies: [] },
+  ]),
+  createSurvey(3, "La compétition de foot la plus excitante?", 25, 3, [
+    {
+      text: "La Ligue des champions est imbattable!",
+      user: "Inconnu",
+      replies: [],
+    },
+    { text: "Non, c'est la Coupe du monde!", user: "Inconnu", replies: [] },
+  ]),
 ];
 
 const SurveysApp = ({navigation}) => {
   const [surveys, setSurveys] = useState(initialSurveys);
   const [newSurveyDescription, setNewSurveyDescription] = useState("");
   const [votedSurveys, setVotedSurveys] = useState([]);
+  const [showAllComments, setShowAllComments] = useState(false);
+  const [newCommentMap, setNewCommentMap] = useState({}); // Utilisation d'un objet pour stocker les nouveaux commentaires pour chaque sondage
+  const [newReplyMap, setNewReplyMap] = useState({}); // Utilisation d'un objet pour stocker les nouvelles réponses pour chaque commentaire
 
   const vote = (surveyId, type) => {
-    const oppositeType = type === "up" ? "down" : "up";
-
-    if (
-      !votedSurveys.includes(`${surveyId}-${type}`) &&
-      !votedSurveys.includes(`${surveyId}-${oppositeType}`)
-    ) {
-      setSurveys(
-        surveys.map((survey) => {
-          if (survey.id === surveyId) {
-            return {
-              ...survey,
-              votes: { ...survey.votes, [type]: survey.votes[type] + 1 },
-            };
-          }
-          return survey;
-        })
-      );
-      setVotedSurveys([...votedSurveys, `${surveyId}-${type}`]);
-    }
+    const updatedSurveys = surveys.map((survey) => {
+      if (survey.id === surveyId) {
+        if (type === "up") {
+          return {
+            ...survey,
+            votes: { ...survey.votes, up: survey.votes.up + 1 },
+          };
+        } else if (type === "down") {
+          return {
+            ...survey,
+            votes: { ...survey.votes, down: survey.votes.down + 1 },
+          };
+        }
+      }
+      return survey;
+    });
+    setSurveys(updatedSurveys);
+    setVotedSurveys([...votedSurveys, `${surveyId}-${type}`]); // Ajouter l'ID du sondage avec le type de vote à la liste des sondages votés
   };
 
   const addComment = (surveyId, comment) => {
+    const newComment = { text: comment, user: "Inconnu", replies: [] }; // Ajout de l'utilisateur "Inconnu"
     setSurveys(
       surveys.map((survey) => {
         if (survey.id === surveyId) {
-          return {
-            ...survey,
-            comments: [...survey.comments, { text: comment, replies: [] }],
-          };
+          return { ...survey, comments: [...survey.comments, newComment] }; // Ajout du nouveau commentaire avec l'utilisateur "Inconnu"
         }
         return survey;
       })
     );
+    setNewCommentMap({ ...newCommentMap, [surveyId]: "" }); // Réinitialisation de la zone de commentaire après avoir ajouté le commentaire
   };
 
   const addReply = (surveyId, commentIndex, reply) => {
     setSurveys(
       surveys.map((survey) => {
         if (survey.id === surveyId) {
-          const updatedComments = [...survey.comments];
-          updatedComments[commentIndex].replies.push(reply);
+          const updatedComments = survey.comments.map((comment, index) => {
+            if (index === commentIndex) {
+              return { ...comment, replies: [...comment.replies, reply] };
+            }
+            return comment;
+          });
           return { ...survey, comments: updatedComments };
         }
         return survey;
       })
     );
+    setNewReplyMap({ ...newReplyMap, [`${surveyId}-${commentIndex}`]: "" }); // Réinitialisation de la zone de réponse après avoir ajouté la réponse
   };
 
   const createNewSurvey = () => {
-    const newSurvey = createSurvey(surveys.length + 1, newSurveyDescription);
+    const newId = surveys.length + 1;
+    const newSurvey = createSurvey(newId, newSurveyDescription, 0, 0, []);
     setSurveys([...surveys, newSurvey]);
-    setNewSurveyDescription("");
+    setNewSurveyDescription(""); // Réinitialisation de la description du nouveau sondage après sa création
   };
 
   return (
     <ScrollView style={styles.page}>
-      <Header title="Paramètre" navigation={navigation}/>
+      <Header title="Sondages" navigation={navigation}/>
       <View style={styles.newSurveyContainer}>
         <TextInput
           placeholder="Description du nouveau sondage..."
@@ -100,7 +120,6 @@ const SurveysApp = ({navigation}) => {
           style={styles.createSurveyButton}
         />
       </View>
-
       {surveys.map((survey) => (
         <View key={survey.id} style={styles.surveyContainer}>
           <Text style={styles.surveyQuestion}>{survey.question}</Text>
@@ -130,37 +149,66 @@ const SurveysApp = ({navigation}) => {
             <FontAwesome5 name="thumbs-down" size={20} color="white" />
             <Text style={styles.voteButtonText}> ({survey.votes.down})</Text>
           </TouchableOpacity>
-          {survey.comments.map((comment, commentIndex) => (
-            <View key={commentIndex}>
-              <Text>{comment.text}</Text>
-              {comment.replies.map((reply, replyIndex) => (
-                <Text key={replyIndex} style={styles.reply}>
-                  {reply}
-                </Text>
-              ))}
-              <View style={styles.commentContainer}>
-                <TextInput
-                  placeholder="Répondre..."
-                  onSubmitEditing={(event) =>
-                    addReply(survey.id, commentIndex, event.nativeEvent.text)
-                  }
-                  style={styles.commentInput}
-                />
-                <TouchableOpacity
-                  onPress={(event) =>
-                    addReply(survey.id, commentIndex, event.nativeEvent.text)
-                  }
-                  style={styles.replyButton}
-                >
-                  <Text>Répondre</Text>
-                </TouchableOpacity>
+          {survey.comments
+            .slice(0, showAllComments ? survey.comments.length : 3)
+            .map((comment, commentIndex) => (
+              <View key={commentIndex}>
+                <Text>{comment.text}</Text>
+                {comment.replies.map((reply, replyIndex) => (
+                  <Text key={replyIndex} style={styles.reply}>
+                    {reply}
+                  </Text>
+                ))}
+                <View style={styles.commentContainer}>
+                  <TextInput
+                    placeholder="Répondre..."
+                    value={newReplyMap[`${survey.id}-${commentIndex}`]}
+                    onChangeText={(text) =>
+                      setNewReplyMap({
+                        ...newReplyMap,
+                        [`${survey.id}-${commentIndex}`]: text,
+                      })
+                    }
+                    onSubmitEditing={() =>
+                      addReply(
+                        survey.id,
+                        commentIndex,
+                        newReplyMap[`${survey.id}-${commentIndex}`]
+                      )
+                    }
+                    style={styles.commentInput}
+                  />
+                  <TouchableOpacity
+                    onPress={() =>
+                      addReply(
+                        survey.id,
+                        commentIndex,
+                        newReplyMap[`${survey.id}-${commentIndex}`]
+                      )
+                    }
+                    style={styles.replyButton}
+                  >
+                    <Text>Répondre</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          ))}
+            ))}
+          {!showAllComments && survey.comments.length > 3 && (
+            <TouchableOpacity
+              onPress={() => setShowAllComments(true)}
+              style={styles.showMoreButton}
+            >
+              <Text>Afficher plus de commentaires</Text>
+            </TouchableOpacity>
+          )}
           <TextInput
             placeholder="Ajouter un commentaire..."
-            onSubmitEditing={(event) =>
-              addComment(survey.id, event.nativeEvent.text)
+            value={newCommentMap[survey.id]}
+            onChangeText={(text) =>
+              setNewCommentMap({ ...newCommentMap, [survey.id]: text })
+            }
+            onSubmitEditing={() =>
+              addComment(survey.id, newCommentMap[survey.id])
             }
             style={styles.commentInput}
           />
@@ -174,16 +222,14 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     backgroundColor: "#FFF7FE",
-    paddingTop: 96,
-    padding: 24,
-    gap: 48,
+    paddingTop: 48,
+    paddingHorizontal: 24,
   },
   container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 16,
-    paddingBottom: 200,
+    padding: 20,
   },
   surveyContainer: {
     marginBottom: 20,
@@ -274,6 +320,13 @@ const styles = StyleSheet.create({
     marginLeft: 20,
     fontStyle: "italic",
     color: "#666",
+  },
+  showMoreButton: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: "#007bff",
+    alignItems: "center",
   },
 });
 

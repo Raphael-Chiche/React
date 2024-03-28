@@ -139,6 +139,7 @@ const Nav = () => {
               iconName = focused ? "person" : "person-outline";
             } else if (route.name == "Projets") {
               iconName = focused ? "search" : "search-outline";
+              
             }
 
             return <Ionicons name={iconName} size={25} color={color} />;

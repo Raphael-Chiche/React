@@ -9,6 +9,7 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import Header from "../components/Header";
 import { LinearGradient } from "expo-linear-gradient";
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 const ContactScreen = ({ navigation }) => {
   // Ajout de deux états pour gérer les options de paramètres
@@ -27,7 +28,7 @@ const ContactScreen = ({ navigation }) => {
   const [selectedValue, setSelectedValue] = React.useState("void");
 
   return (
-    <View style={styles.page}>
+    <View style={styles.page}>        
       <Header title="Contact" navigation={navigation} />
       <View style={styles.container}>
         {/* show me how we do a TexInput pls */}
@@ -111,6 +112,11 @@ const styles = StyleSheet.create({
     paddingTop: 96,
     padding: 24,
     gap: 48,
+  },
+  back:{
+    position: "absolute",
+    top: 20,
+    left: 20,
   },
   h3: {
     fontSize: 24,

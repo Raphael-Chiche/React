@@ -155,7 +155,6 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingHorizontal: 16,
     alignItems: "center",
-
   },
   title: {
     fontSize: 22,
